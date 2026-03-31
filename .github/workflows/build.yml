@@ -1,0 +1,45 @@
+name: Build and Deploy QR Scanner
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake build-essential libopencv-dev unixodbc-dev
+
+        # Install ZXing C++ library
+        git clone https://github.com/zxing-cpp/zxing-cpp.git
+        cd zxing-cpp
+        mkdir build && cd build
+        cmake ..
+        make -j$(nproc)
+        sudo make install
+        cd ../..
+
+    - name: Build project
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+        make
+
+    - name: Upload artifact to server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "build/qr_scanner"
+        target: "/home/${{ secrets.SERVER_USER }}/artifacts/"
