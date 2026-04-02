@@ -9,9 +9,16 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZXING REQUIRED zxing)
 find_package(ODBC REQUIRED)
 
+# Ensure ZXing headers are available
+find_path(ZXING_INCLUDE_PATH ZXing/DecodeHints.h)
+if(NOT ZXING_INCLUDE_PATH)
+    message(FATAL_ERROR "ZXing headers not found (ZXing/DecodeHints.h). Install zxing-cpp and rerun CMake.")
+endif()
+
 # Include directories
 include_directories(include)
 include_directories(${ZXING_INCLUDE_DIRS})
+include_directories(${ZXING_INCLUDE_PATH})
 include_directories(${ODBC_INCLUDE_DIRS})
 
 # Source files
