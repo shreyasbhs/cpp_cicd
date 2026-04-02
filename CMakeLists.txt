@@ -9,8 +9,13 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZXING REQUIRED zxing)
 find_package(ODBC REQUIRED)
 
-# Ensure ZXing headers are available
-find_path(ZXING_INCLUDE_PATH ZXing/DecodeHints.h)
+# Ensure ZXing headers are available (search standard and /usr/local paths)
+find_path(ZXING_INCLUDE_PATH ZXing/DecodeHints.h
+  PATHS /usr/local/include /usr/include ${ZXING_INCLUDE_DIRS}
+  NO_DEFAULT_PATH)
+if(NOT ZXING_INCLUDE_PATH)
+    find_path(ZXING_INCLUDE_PATH ZXing/DecodeHints.h)
+endif()
 if(NOT ZXING_INCLUDE_PATH)
     message(FATAL_ERROR "ZXing headers not found (ZXing/DecodeHints.h). Install zxing-cpp and rerun CMake.")
 endif()
