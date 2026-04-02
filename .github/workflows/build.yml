@@ -28,12 +28,47 @@ jobs:
         sudo make install
         cd ../..
 
-    - name: Build project
+    - name: Download Coverity Build Tool
+      run: |
+        wget https://scan.coverity.com/download/linux64 \
+          --post-data "token=${{ secrets.COVERITY_TOKEN }}&project=${{ secrets.COVERITY_PROJECT_NAME }}" \
+          -O coverity-build-tool.tgz
+        tar -xzf coverity-build-tool.tgz
+        COV_TOOL_DIR=$(ls -d cov-analysis-* | head -1)
+        echo "COV_BIN=$PWD/$COV_TOOL_DIR/bin" >> $GITHUB_ENV
+      if: github.event_name == 'push'
+
+    - name: Build with Coverity
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+        ${{ env.COV_BIN }}/cov-build --dir cov-int make
+        cd ..
+      if: github.event_name == 'push' && env.COV_BIN != ''
+
+    - name: Create Coverity scan archive
+      run: |
+        tar -czf asap_simulate_coverity_scan.tgz build/cov-int
+      if: github.event_name == 'push'
+
+    - name: Upload to Coverity Scan
+      run: |
+        curl --form token=${{ secrets.COVERITY_TOKEN }} \
+          --form email=${{ secrets.COVERITY_EMAIL }} \
+          --form file=@asap_simulate_coverity_scan.tgz \
+          --form version="${{ github.sha }}" \
+          --form description="GitHub Actions build" \
+          https://scan.coverity.com/builds?project=${{ secrets.COVERITY_PROJECT_NAME }}
+      if: github.event_name == 'push' && env.COV_BIN != ''
+
+    - name: Build project (Regular)
       run: |
         mkdir build
         cd build
         cmake ..
         make
+      if: github.event_name == 'pull_request'
 
     - name: Upload artifact to server
       uses: appleboy/scp-action@v0.1.4
@@ -43,3 +78,4 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: "build/qr_scanner"
         target: "/home/${{ secrets.SERVER_USER }}/artifacts/"
+      if: github.event_name == 'pull_request'
